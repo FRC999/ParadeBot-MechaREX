@@ -19,12 +19,13 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.ArmConstants;
 import frc.robot.Constants.ArmConstants.ArmMotorConstantsEnum;
 import frc.robot.Constants.ArmConstants.ArmPIDConstants;
 import frc.robot.Constants.CurrentLimiter;
 import frc.robot.Constants.EnableCurrentLimiter;
-import frc.robot.Constants.ArmConstants;
 import frc.robot.Constants.EnabledSubsystems;
+import frc.robot.RobotContainer;
 
 public class ArmSubsystem extends SubsystemBase {
   // NEO motors connected to Spark Max
@@ -62,8 +63,22 @@ public class ArmSubsystem extends SubsystemBase {
 
     // Main Motor; should not follow the other motor
     configureArmMotors(armMotorLeft, armEncoderLeft, armPIDControllerLeft, ArmMotorConstantsEnum.LEFTMOTOR, null, IdleMode.kBrake);
-    // Follower Motor
+    // Follower Motor 
     configureArmMotors(armMotorRight, armEncoderRight, armPIDControllerRight, ArmMotorConstantsEnum.RIGHTMOTOR, armMotorLeft, IdleMode.kBrake);
+  
+      // ==========================
+    // === ARM IMU initialization
+    // ==========================
+    // This IMU should be attached FLAT to the ARM, with X pointing straight
+    // forward.
+    // The IMU angle will allow us to calibrate NEO encoders rotating the arm.
+    //armImu = new Pigeon2(Arm.PIGEON2_ARM_CAN_ID, "rio");
+
+    calibrateArmEncoderToPitch();
+
+    //setArmFeedForward();
+
+    System.out.println("*** Arm Subsystem Initialized");
   }
 
   private void configureArmMotors(SparkMax motor, RelativeEncoder encoder, SparkClosedLoopController p,
@@ -153,6 +168,61 @@ public class ArmSubsystem extends SubsystemBase {
 
     motor.configure(sparkMaxConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
+  }
+
+  private void calibrateArmEncoderToPitch(){
+        armEncoderZero = getArmEncoderLeader() -
+      (
+       (getArmIMUPitch() - 
+          ((ArmConstants.USE_PAN_IMU_FOR_CORRECTION) ? RobotContainer.driveSubsystem.getPitch() : 0))  // pan IMU Pitch-based correction for uneven surface
+            * ArmConstants.ARM_ENCODER_CHANGE_PER_DEGREE
+      );
+  }
+
+  public void resetArmEncoderToPitch() {
+        armEncoderZero = getArmEncoderLeader() -
+      (
+       (ArmConstants.ARM_IMU_RESET_ANGLE - 
+          ((ArmConstants.USE_PAN_IMU_FOR_CORRECTION) ? RobotContainer.driveSubsystem.getPitch() : 0))  // pan IMU Pitch-based correction for uneven surface
+            * ArmConstants.ARM_ENCODER_CHANGE_PER_DEGREE
+      );
+  }
+
+  /**
+   * Get Arm IMU pitch in degrees.
+   * IMU is pointed to the FRONT of the robot with the X and left with Y
+   * Positive Pitch angle increases when arm is going from front towards the back.
+   * 
+   * @return
+   */
+  public double getArmIMUPitch() {
+    return -armImu.getPitch().getValueAsDouble();
+  }
+
+  /**
+   * Get current angle of the arm.
+   * Positive Pitch angle increases when arm is going from front towards the back.
+   * The pitch (per encoders) is a difference between current encoder value and a
+   * "zero degree" encoder value
+   * divided by ARM_ENCODER_CHANGE_PER_DEGREE
+   * 
+   * @return - degrees angle
+   */
+  public double getArmAngleSI() {
+    return (armEncoderLeader.getPosition() - armEncoderZero) ; // /Arm.ARM_ENCODER_CHANGE_PER_DEGREE;
+  }
+
+  // Encoder telemetry
+  public double getArmEncoderLeft() {
+    return armEncoderLeft.getPosition();
+  }
+
+  public double getArmEncoderRight() {
+    return armEncoderRight.getPosition();
+  }
+
+  public double getArmEncoderLeader() {
+    return armEncoderLeader.getPosition();
   }
 
   public void runArmMotors(double power) {

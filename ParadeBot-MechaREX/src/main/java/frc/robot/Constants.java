@@ -340,8 +340,11 @@ public final class Constants {
 		public static final double POSITION_CONVERSION_FACTOR = 2 * Math.PI;
 		public static final double nominalVoltage = 12.0;
 		public static final double rampRate = 0.25;
-
+		public static final boolean USE_PAN_IMU_FOR_CORRECTION = true; // Correct Arm IMU with Pan IMU if game
+		// surface is uneven
 		public static final double ARM_ENCODER_CHANGE_PER_DEGREE = 3.862568732;
+
+		public static final double ARM_IMU_RESET_ANGLE = -82.0;
 
 		public static enum ArmMotorConstantsEnum {
 			LEFTMOTOR( // Front Left - main motor
